@@ -12,7 +12,6 @@
 
 import _ from 'lodash';
 import { assert, expect } from 'chai';
-import NoopReporter from '../src/reporters/noop_reporter';
 import CompositeReporter from '../src/reporters/composite_reporter';
 import RemoteReporter from '../src/reporters/remote_reporter';
 import ConstSampler from '../src/samplers/const_sampler';
@@ -21,6 +20,24 @@ import RemoteSampler from '../src/samplers/remote_sampler';
 import RateLimitingSampler from '../src/samplers/ratelimiting_sampler';
 import { initTracer } from '../src/index.js';
 import opentracing from 'opentracing';
+import RemoteThrottler from '../src/throttler/remote_throttler';
+import DefaultThrottler from '../src/throttler/default_throttler';
+
+const logger = {
+  info: function info(msg) {},
+};
+
+const metrics = {
+  createCounter: function createCounter() {
+    return {};
+  },
+  createGauge: function createGauge() {
+    return {};
+  },
+  createTimer: function createTimer() {
+    return {};
+  },
+};
 
 describe('initTracer', () => {
   it('should initialize noop tracer when disable is set', () => {
@@ -137,20 +154,6 @@ describe('initTracer', () => {
   });
 
   it('should pass options to tracer', () => {
-    let logger = {
-      info: function info(msg) {},
-    };
-    let metrics = {
-      createCounter: function createCounter() {
-        return {};
-      },
-      createGauge: function createGauge() {
-        return {};
-      },
-      createTimer: function createTimer() {
-        return {};
-      },
-    };
     let tracer = initTracer(
       {
         serviceName: 'test-service',
@@ -166,5 +169,34 @@ describe('initTracer', () => {
     assert.equal(tracer._logger, logger);
     assert.equal(tracer._metrics._factory, metrics);
     assert.equal(tracer._tags['x'], 'y');
+  });
+
+  it('should initialize throttler from config', () => {
+    let config = {
+      serviceName: 'test-service',
+      throttler: {
+        refreshIntervalMs: 60000,
+      },
+    };
+    const tracer = initTracer(config, { logger: logger, metrics: metrics });
+    expect(tracer._debugThrottler).to.be.an.instanceof(RemoteThrottler);
+  });
+
+  it('should delegate throttler initialization to tracer', () => {
+    let config = {
+      serviceName: 'test-service',
+    };
+    const tracer = initTracer(config);
+    expect(tracer._debugThrottler).to.be.an.instanceof(DefaultThrottler);
+  });
+
+  it('should use throttler passed in via options', () => {
+    let config = {
+      serviceName: 'test-service',
+    };
+    const throttler = new RemoteThrottler();
+    const tracer = initTracer(config, { throttler: throttler });
+    expect(tracer._debugThrottler).to.be.an.instanceof(RemoteThrottler);
+    throttler.close();
   });
 });

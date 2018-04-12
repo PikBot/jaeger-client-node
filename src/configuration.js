@@ -22,6 +22,7 @@ import Tracer from './tracer';
 import UDPSender from './reporters/udp_sender';
 import opentracing from 'opentracing';
 import * as constants from './constants.js';
+import RemoteThrottler from './throttler/remote_throttler';
 
 let jaegerSchema = {
   id: '/jaeger',
@@ -46,6 +47,14 @@ let jaegerSchema = {
         agentHost: { type: 'string' },
         agentPort: { type: 'number' },
         flushIntervalMs: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+    throttler: {
+      properties: {
+        host: { type: 'string' },
+        port: { type: 'number' },
+        refreshIntervalMs: { type: 'number' },
       },
       additionalProperties: false,
     },
@@ -93,7 +102,7 @@ export default class Configuration {
     let reporterConfig = {};
     let reporters = [];
     let senderConfig = {
-      logger: config.logger,
+      logger: options.logger,
     };
     if (config.reporter) {
       if (config.reporter.logSpans) {
@@ -121,6 +130,17 @@ export default class Configuration {
     return new CompositeReporter(reporters);
   }
 
+  static _getThrottler(config, options) {
+    const throttlerOptions = Object.assign({}, config.throttler);
+    if (options.logger) {
+      throttlerOptions.logger = options.logger;
+    }
+    if (options.metrics) {
+      throttlerOptions.metrics = options.metrics;
+    }
+    return new RemoteThrottler(config.serviceName, options);
+  }
+
   /**
    * Initialize and return a new instance of Jaeger Tracer.
    *
@@ -139,6 +159,9 @@ export default class Configuration {
    * @param {Object} [options.reporter] - if provided, this reporter will be used.
    *        Otherwise a new reporter will be created according to the description
    *        in the config.
+   * @param {Object} [options.throttler] - if provided, this throttler will be used.
+   *        Otherwise a new throttler will be created according to the description
+   *        in the config.
    * @param {Object} [options.metrics] - a metrics factory (see ./_flow/metrics.js)
    * @param {Object} [options.logger] - a logger (see ./_flow/logger.js)
    * @param {Object} [options.tags] - set of key-value pairs which will be set
@@ -147,6 +170,7 @@ export default class Configuration {
   static initTracer(config, options = {}) {
     let reporter;
     let sampler;
+    let throttler;
     if (options.metrics) {
       options.metrics = new Metrics(options.metrics);
     }
@@ -166,6 +190,13 @@ export default class Configuration {
     } else {
       reporter = options.reporter;
     }
+    if (!options.throttler) {
+      if (config.throttler) {
+        throttler = Configuration._getThrottler(config, options);
+      }
+    } else {
+      throttler = options.throttler;
+    }
 
     if (options.logger) {
       options.logger.info(`Initializing Jaeger Tracer with ${reporter.name()} and ${sampler.name()}`);
@@ -175,6 +206,7 @@ export default class Configuration {
       metrics: options.metrics,
       logger: options.logger,
       tags: options.tags,
+      debugThrottler: throttler,
     });
   }
 }
