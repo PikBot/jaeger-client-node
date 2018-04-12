@@ -22,9 +22,9 @@ import * as opentracing from 'opentracing';
 import Span from '../src/span.js';
 import SpanContext from '../src/span_context.js';
 import sinon from 'sinon';
-import * as thrift from '../src/thrift.js';
 import Tracer from '../src/tracer.js';
 import Utils from '../src/util.js';
+import DefaultThrottler from '../src/throttler/default_throttler';
 
 describe('span should', () => {
   let reporter = new InMemoryReporter();
@@ -170,6 +170,35 @@ describe('span should', () => {
     assert.isOk(unnormalizedKey in Span._getBaggageHeaderCache());
   });
 
+  it('not be set to debug if throttled', () => {
+    tracer._debugThrottler = new DefaultThrottler(true);
+    span = new Span(tracer, 'op-name', spanContext, tracer.now());
+
+    let prevTagLength = span._tags.length;
+    span.setTag(opentracing.Tags.SAMPLING_PRIORITY, 1);
+    assert.isOk(span.context().samplingFinalized);
+    assert.isNotOk(span.context().isDebug());
+    assert.equal(
+      prevTagLength,
+      span._tags.length,
+      'The sampling.priority tag should not be set if throttled'
+    );
+
+    span = new Span(tracer, 'op-name', spanContext, tracer.now());
+
+    prevTagLength = span._tags.length;
+    const tags = {};
+    tags[opentracing.Tags.SAMPLING_PRIORITY] = 1;
+    span.addTags(tags);
+    assert.isOk(span.context().samplingFinalized);
+    assert.isNotOk(span.context().isDebug());
+    assert.equal(
+      prevTagLength,
+      span._tags.length,
+      'The sampling.priority tag should not be set if throttled'
+    );
+  });
+
   describe('adaptive sampling tests for span', () => {
     let options = [
       { desc: 'sampled: ', sampling: true, reportedSpans: 1 },
@@ -214,10 +243,15 @@ describe('span should', () => {
 
         span.setTag(opentracing.Tags.SAMPLING_PRIORITY, 1);
         assert.isOk(span.context().samplingFinalized);
+        assert.deepEqual(span._tags[span._tags.length - 1], { key: 'sampling.priority', value: 1 });
 
-        let unsampledSpan = tracer.startSpan('usampled-span');
+        let unsampledSpan = tracer.startSpan('unsampled-span');
         unsampledSpan.setTag(opentracing.Tags.SAMPLING_PRIORITY, -1);
         assert.isOk(unsampledSpan.context().samplingFinalized);
+        assert.deepEqual(unsampledSpan._tags[unsampledSpan._tags.length - 1], {
+          key: 'sampling.priority',
+          value: -1,
+        });
       });
 
       it('should trigger on a finish()-ed span', () => {

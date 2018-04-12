@@ -28,6 +28,7 @@ import NoopMetricFactory from './metrics/noop/metric_factory';
 import DefaultBaggageRestrictionManager from './baggage/default_baggage_restriction_manager';
 import os from 'os';
 import BaggageSetter from './baggage/baggage_setter';
+import DefaultThrottler from './throttler/default_throttler';
 
 export default class Tracer {
   _serviceName: string;
@@ -39,6 +40,8 @@ export default class Tracer {
   _extractors: any;
   _metrics: any;
   _baggageSetter: BaggageSetter;
+  _debugThrottler: Throttler;
+  _process: Process;
 
   /**
    * @param {String} [serviceName] - name of the current service or application.
@@ -73,6 +76,7 @@ export default class Tracer {
       options.baggageRestrictionManager || new DefaultBaggageRestrictionManager(),
       this._metrics
     );
+    this._debugThrottler = options.debugThrottler || new DefaultThrottler(false);
     this._injectors = {};
     this._extractors = {};
 
@@ -96,7 +100,16 @@ export default class Tracer {
     this.registerInjector(opentracing.FORMAT_BINARY, binaryCodec);
     this.registerExtractor(opentracing.FORMAT_BINARY, binaryCodec);
 
-    this._reporter.setProcess(this._serviceName, Utils.convertObjectToTags(this._tags));
+    this._process = {
+      serviceName: serviceName,
+      tags: Utils.convertObjectToTags(this._tags),
+      uuid: Utils.getRandom64().toString('hex'),
+    };
+    if (typeof this._debugThrottler.setProcess === 'function') {
+      this._debugThrottler.setProcess(this._process);
+    }
+    // TODO update reporter to implement ProcessSetter
+    this._reporter.setProcess(this._process.serviceName, this._process.tags);
   }
 
   _startInternalSpan(
@@ -214,7 +227,7 @@ export default class Tracer {
       }
 
       if (parent) {
-        if (parent.isDebugIDContainerOnly()) {
+        if (parent.isDebugIDContainerOnly() && this._isDebugAllowed(operationName)) {
           flags |= constants.SAMPLED_MASK | constants.DEBUG_MASK;
           internalTags[constants.JAEGER_DEBUG_HEADER] = parent.debugId;
         }
@@ -326,5 +339,9 @@ export default class Tracer {
     // TODO investigate process.hrtime; verify it is available in all Node versions.
     // http://stackoverflow.com/questions/11725691/how-to-get-a-microtime-in-node-js
     return Date.now();
+  }
+
+  _isDebugAllowed(operation: string): boolean {
+    return this._debugThrottler.isAllowed(operation);
   }
 }

@@ -205,8 +205,10 @@ export default class Span {
    **/
   addTags(keyValuePairs: any): Span {
     if (opentracing.Tags.SAMPLING_PRIORITY in keyValuePairs) {
-      this._setSamplingPriority(keyValuePairs[opentracing.Tags.SAMPLING_PRIORITY]);
-      delete keyValuePairs[opentracing.Tags.SAMPLING_PRIORITY];
+      // Delete the SAMPLING_PRIORITY tag if it was not set
+      if (!this._setSamplingPriority(keyValuePairs[opentracing.Tags.SAMPLING_PRIORITY])) {
+        delete keyValuePairs[opentracing.Tags.SAMPLING_PRIORITY];
+      }
     }
 
     if (this._isWriteable()) {
@@ -229,8 +231,7 @@ export default class Span {
    * @return {Span} - returns this span.
    * */
   setTag(key: string, value: any): Span {
-    if (key === opentracing.Tags.SAMPLING_PRIORITY) {
-      this._setSamplingPriority(value);
+    if (key === opentracing.Tags.SAMPLING_PRIORITY && !this._setSamplingPriority(value)) {
       return this;
     }
 
@@ -277,12 +278,22 @@ export default class Span {
     });
   }
 
-  _setSamplingPriority(priority: number): void {
-    if (priority > 0) {
-      this._spanContext.flags = this._spanContext.flags | constants.SAMPLED_MASK | constants.DEBUG_MASK;
-    } else {
-      this._spanContext.flags = this._spanContext.flags & ~constants.SAMPLED_MASK;
-    }
+  /**
+   * Returns true if the flag was updated successfully, false otherwise
+   *
+   * @param priority - 0 to disable sampling, 1 to enable
+   * @returns {boolean} - true if the flag was updated successfully
+   * @private
+   */
+  _setSamplingPriority(priority: number): boolean {
     this._spanContext.finalizeSampling();
+    if (priority == 0) {
+      this._spanContext.flags = this._spanContext.flags & ~constants.SAMPLED_MASK;
+      return true;
+    } else if (this._tracer._isDebugAllowed(this._operationName)) {
+      this._spanContext.flags = this._spanContext.flags | constants.SAMPLED_MASK | constants.DEBUG_MASK;
+      return true;
+    }
+    return false;
   }
 }
