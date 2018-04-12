@@ -131,7 +131,8 @@ export default class Configuration {
   }
 
   static _getThrottler(config, options) {
-    const throttlerOptions = Object.assign({}, config.throttler);
+    // TODO Use Object.assign instead, only supported in Node 4+
+    const throttlerOptions = JSON.parse(JSON.stringify(config.throttler));
     if (options.logger) {
       throttlerOptions.logger = options.logger;
     }
