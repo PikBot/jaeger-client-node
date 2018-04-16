@@ -35,7 +35,7 @@ describe('RemoteThrottler should', () => {
   let serviceName = 'service';
   let operation = 'op';
   let other_operation = 'oop';
-  let uuid = 'uuid';
+  let clientID = 'clientID';
   let creditsUpdatedHook;
 
   before(() => {
@@ -65,7 +65,7 @@ describe('RemoteThrottler should', () => {
   });
 
   it('return false for isAllowed on initial call and return true once credits are initialized', done => {
-    throttler.setProcess({ uuid: uuid });
+    throttler.setProcess({ clientID: clientID });
     server.addCredits(serviceName, [{ operation: operation, credits: 3 }]);
     creditsUpdatedHook = _throttler => {
       assert.isOk(_throttler.isAllowed(operation));
@@ -77,16 +77,16 @@ describe('RemoteThrottler should', () => {
     throttler._refreshCredits();
   });
 
-  it('log an error if _refreshCredits is called prior to UUID being set', () => {
+  it('log an error if _refreshCredits is called prior to clientID being set', () => {
     throttler._fetchCredits = sinon.spy();
     throttler._refreshCredits();
     assert.equal(logger._errorMsgs.length, 1);
     sinon.assert.notCalled(throttler._fetchCredits);
   });
 
-  it('not fetch credits if uuid is invalid', () => {
+  it('not fetch credits if clientID is invalid', () => {
     throttler._fetchCredits = sinon.spy();
-    throttler.setProcess({ uuid: null });
+    throttler.setProcess({ clientID: null });
     throttler._refreshCredits();
     assert.equal(logger._errorMsgs.length, 1, `errors=${logger._errorMsgs}`);
     sinon.assert.notCalled(throttler._fetchCredits);
@@ -107,7 +107,7 @@ describe('RemoteThrottler should', () => {
   });
 
   it('succeed when we retrieve credits for multiple operations', done => {
-    throttler.setProcess({ uuid: uuid });
+    throttler.setProcess({ clientID: clientID });
     server.addCredits(serviceName, [
       { operation: operation, credits: 5 },
       { operation: other_operation, credits: 3 },
@@ -126,7 +126,7 @@ describe('RemoteThrottler should', () => {
   });
 
   it('emit failure metric on failing to query for credits', done => {
-    throttler.setProcess({ uuid: uuid });
+    throttler.setProcess({ clientID: clientID });
     throttler._credits[operation] = 0;
     metrics.throttlerUpdateFailure.increment = function() {
       assert.equal(logger._errorMsgs.length, 1, `errors=${logger._errorMsgs}`);
@@ -137,7 +137,7 @@ describe('RemoteThrottler should', () => {
   });
 
   it('emit failure metric on failing to parse bad http json response', done => {
-    throttler.setProcess({ uuid: uuid });
+    throttler.setProcess({ clientID: clientID });
     throttler._credits[operation] = 0;
     metrics.throttlerUpdateFailure.increment = function() {
       assert.equal(logger._errorMsgs.length, 1, `errors=${logger._errorMsgs}`);
@@ -148,7 +148,7 @@ describe('RemoteThrottler should', () => {
   });
 
   it('emit failure metric when server returns an invalid response', done => {
-    throttler.setProcess({ uuid: uuid });
+    throttler.setProcess({ clientID: clientID });
     throttler._credits[operation] = 0;
     metrics.throttlerUpdateFailure.increment = function() {
       assert.equal(logger._errorMsgs.length, 1, `errors=${logger._errorMsgs}`);
@@ -160,13 +160,13 @@ describe('RemoteThrottler should', () => {
   it('not fetch credits if no operations have been seen', () => {
     throttler = new RemoteThrottler(serviceName);
     throttler._fetchCredits = sinon.spy();
-    throttler.setProcess({ uuid: uuid });
+    throttler.setProcess({ clientID: clientID });
     throttler._refreshCredits();
     sinon.assert.notCalled(throttler._fetchCredits);
   });
 
   it('refresh credits after _afterInitialDelay is called', done => {
-    throttler.setProcess({ uuid: uuid });
+    throttler.setProcess({ clientID: clientID });
     throttler._credits[operation] = 0;
     server.addCredits(serviceName, [{ operation: operation, credits: 5 }]);
     creditsUpdatedHook = _throttler => {

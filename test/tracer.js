@@ -252,7 +252,7 @@ describe('tracer should', () => {
       debugThrottler: throttler,
     });
     assert.equal(tracer._process.serviceName, 'x');
-    assert.isString(tracer._process.uuid);
+    assert.isString(tracer._process.clientID);
     sinon.assert.calledWith(throttler.setProcess, tracer._process);
   });
 

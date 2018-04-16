@@ -44,7 +44,7 @@ export default class RemoteThrottler {
   _host: string;
   _port: number;
 
-  _uuid: string;
+  _clientID: string;
   _credits: CreditsPerOperation;
 
   _initialDelayTimeoutHandle: any;
@@ -90,7 +90,7 @@ export default class RemoteThrottler {
   }
 
   setProcess(process: Process): void {
-    this._uuid = process.uuid || '';
+    this._clientID = process.clientID || '';
   }
 
   isAllowed(operation: string): boolean {
@@ -112,8 +112,8 @@ export default class RemoteThrottler {
   }
 
   _refreshCredits() {
-    if (!this._uuid) {
-      this._logger.error(`UUID must be set to fetch credits`);
+    if (!this._clientID) {
+      this._logger.error(`clientID must be set to fetch credits`);
       return;
     }
     const keys = Object.keys(this._credits);
@@ -132,7 +132,7 @@ export default class RemoteThrottler {
 
   _fetchCredits(operations: any) {
     const serviceName: string = encodeURIComponent(this._serviceName);
-    const clientID: string = encodeURIComponent(this._uuid);
+    const clientID: string = encodeURIComponent(this._clientID);
     const ops: string = operations.map(encodeURIComponent).join('&operations=');
     const url: string = `/credits?service=${serviceName}&clientID=${clientID}&operations=${ops}`;
 

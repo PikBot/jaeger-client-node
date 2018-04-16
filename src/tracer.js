@@ -100,12 +100,12 @@ export default class Tracer {
     this.registerInjector(opentracing.FORMAT_BINARY, binaryCodec);
     this.registerExtractor(opentracing.FORMAT_BINARY, binaryCodec);
 
-    const uuid = Utils.getRandom64().toString('hex');
-    this._tags[constants.TRACER_CLIENT_ID_TAG_KEY] = uuid;
+    const clientID = Utils.getRandom64().toString('hex');
+    this._tags[constants.TRACER_CLIENT_ID_TAG_KEY] = clientID;
     this._process = {
       serviceName: serviceName,
       tags: Utils.convertObjectToTags(this._tags),
-      uuid: uuid,
+      clientID: clientID,
     };
     if (typeof this._debugThrottler.setProcess === 'function') {
       this._debugThrottler.setProcess(this._process);
