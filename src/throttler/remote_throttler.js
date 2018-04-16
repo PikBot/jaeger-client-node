@@ -132,9 +132,9 @@ export default class RemoteThrottler {
 
   _fetchCredits(operations: any) {
     const serviceName: string = encodeURIComponent(this._serviceName);
-    const uuid: string = encodeURIComponent(this._uuid);
-    const ops: string = operations.map(encodeURIComponent).join('&operation=');
-    const url: string = `/credits?service=${serviceName}&uuid=${uuid}&operation=${ops}`;
+    const clientID: string = encodeURIComponent(this._uuid);
+    const ops: string = operations.map(encodeURIComponent).join('&operations=');
+    const url: string = `/credits?service=${serviceName}&clientID=${clientID}&operations=${ops}`;
 
     const success: Function = body => {
       this._parseCreditResponse(body);
