@@ -139,7 +139,7 @@ export default class Configuration {
     if (options.metrics) {
       throttlerOptions.metrics = options.metrics;
     }
-    return new RemoteThrottler(config.serviceName, options);
+    return new RemoteThrottler(config.serviceName, throttlerOptions);
   }
 
   /**
