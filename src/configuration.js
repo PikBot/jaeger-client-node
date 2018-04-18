@@ -23,6 +23,7 @@ import UDPSender from './reporters/udp_sender';
 import opentracing from 'opentracing';
 import * as constants from './constants.js';
 import RemoteThrottler from './throttler/remote_throttler';
+import Utils from './util.js';
 
 let jaegerSchema = {
   id: '/jaeger',
@@ -131,8 +132,7 @@ export default class Configuration {
   }
 
   static _getThrottler(config, options) {
-    // TODO Use Object.assign instead, only supported in Node 4+
-    const throttlerOptions = JSON.parse(JSON.stringify(config.throttler));
+    const throttlerOptions = Utils.clone(config.throttler);
     if (options.logger) {
       throttlerOptions.logger = options.logger;
     }

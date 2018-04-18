@@ -256,6 +256,16 @@ describe('tracer should', () => {
     sinon.assert.calledWith(throttler.setProcess, tracer._process);
   });
 
+  it('close _debugThrottler on close', () => {
+    const throttler = new DefaultThrottler();
+    throttler.close = sinon.spy();
+    tracer = new Tracer('x', reporter, new ConstSampler(true), {
+      debugThrottler: throttler,
+    });
+    tracer.close();
+    sinon.assert.calledOnce(throttler.close);
+  });
+
   describe('Metrics', () => {
     it('startSpan', () => {
       let params = [

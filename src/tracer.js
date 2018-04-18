@@ -40,7 +40,7 @@ export default class Tracer {
   _extractors: any;
   _metrics: any;
   _baggageSetter: BaggageSetter;
-  _debugThrottler: Throttler;
+  _debugThrottler: Throttler & ProcessSetter;
   _process: Process;
 
   /**
@@ -107,9 +107,7 @@ export default class Tracer {
       tags: Utils.convertObjectToTags(this._tags),
       uuid: uuid,
     };
-    if (typeof this._debugThrottler.setProcess === 'function') {
-      this._debugThrottler.setProcess(this._process);
-    }
+    this._debugThrottler.setProcess(this._process);
     // TODO update reporter to implement ProcessSetter
     this._reporter.setProcess(this._process.serviceName, this._process.tags);
   }
@@ -330,6 +328,7 @@ export default class Tracer {
     reporter.close(() => {
       this._sampler.close(callback);
     });
+    this._debugThrottler.close();
   }
 
   /**

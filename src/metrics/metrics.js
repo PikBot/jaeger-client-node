@@ -33,6 +33,7 @@ export default class Metrics {
   baggageUpdateSuccess: Counter;
   baggageUpdateFailure: Counter;
   baggageTruncate: Counter;
+  throttledDebugSpans: Counter;
   throttlerUpdateSuccess: Counter;
   throttlerUpdateFailure: Counter;
 
@@ -122,6 +123,8 @@ export default class Metrics {
     });
 
     this.baggageTruncate = this._factory.createCounter('baggage-trucate');
+
+    this.throttledDebugSpans = this._factory.createCounter('throttled_debug_spans');
 
     this.throttlerUpdateSuccess = this._factory.createCounter('throttler-update', {
       result: 'ok',

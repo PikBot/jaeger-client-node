@@ -172,7 +172,7 @@ describe('initTracer', () => {
   });
 
   it('should initialize throttler from config', () => {
-    let config = {
+    const config = {
       serviceName: 'test-service',
       throttler: {
         refreshIntervalMs: 60000,
@@ -183,7 +183,7 @@ describe('initTracer', () => {
   });
 
   it('should delegate throttler initialization to tracer', () => {
-    let config = {
+    const config = {
       serviceName: 'test-service',
     };
     const tracer = initTracer(config);
@@ -191,12 +191,12 @@ describe('initTracer', () => {
   });
 
   it('should use throttler passed in via options', () => {
-    let config = {
+    const config = {
       serviceName: 'test-service',
     };
     const throttler = new RemoteThrottler();
     const tracer = initTracer(config, { throttler: throttler });
-    expect(tracer._debugThrottler).to.be.an.instanceof(RemoteThrottler);
+    expect(tracer._debugThrottler).to.equal(throttler);
     throttler.close();
   });
 });

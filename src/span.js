@@ -204,17 +204,16 @@ export default class Span {
    * @return {Span} - returns this span.
    **/
   addTags(keyValuePairs: any): Span {
-    if (opentracing.Tags.SAMPLING_PRIORITY in keyValuePairs) {
-      // Delete the SAMPLING_PRIORITY tag if it was not set
-      if (!this._setSamplingPriority(keyValuePairs[opentracing.Tags.SAMPLING_PRIORITY])) {
-        delete keyValuePairs[opentracing.Tags.SAMPLING_PRIORITY];
-      }
-    }
-
+    const samplingKey = opentracing.Tags.SAMPLING_PRIORITY;
+    const samplingPriority = keyValuePairs[samplingKey];
+    const samplingPriorityWasSet = samplingPriority != null && this._setSamplingPriority(samplingPriority);
     if (this._isWriteable()) {
       for (let key in keyValuePairs) {
         if (keyValuePairs.hasOwnProperty(key)) {
-          let value = keyValuePairs[key];
+          if (key === samplingKey && !samplingPriorityWasSet) {
+            continue;
+          }
+          const value = keyValuePairs[key];
           this._tags.push({ key: key, value: value });
         }
       }
@@ -287,13 +286,18 @@ export default class Span {
    */
   _setSamplingPriority(priority: number): boolean {
     this._spanContext.finalizeSampling();
-    if (priority == 0) {
-      this._spanContext.flags = this._spanContext.flags & ~constants.SAMPLED_MASK;
-      return true;
-    } else if (this._tracer._isDebugAllowed(this._operationName)) {
-      this._spanContext.flags = this._spanContext.flags | constants.SAMPLED_MASK | constants.DEBUG_MASK;
-      return true;
+    if (priority > 0) {
+      if (this._spanContext.isDebug()) {
+        // If the span is already in debug, no need to set it again
+        return false;
+      }
+      if (this._tracer._isDebugAllowed(this._operationName)) {
+        this._spanContext.flags = this._spanContext.flags | constants.SAMPLED_MASK | constants.DEBUG_MASK;
+        return true;
+      }
+      return false;
     }
+    this._spanContext.flags = this._spanContext.flags & ~constants.SAMPLED_MASK;
     return false;
   }
 }

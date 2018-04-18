@@ -170,11 +170,11 @@ describe('span should', () => {
     assert.isOk(unnormalizedKey in Span._getBaggageHeaderCache());
   });
 
-  it('not be set to debug if throttled', () => {
+  it('not be set to debug via setTag if throttled', () => {
     tracer._debugThrottler = new DefaultThrottler(true);
     span = new Span(tracer, 'op-name', spanContext, tracer.now());
 
-    let prevTagLength = span._tags.length;
+    const prevTagLength = span._tags.length;
     span.setTag(opentracing.Tags.SAMPLING_PRIORITY, 1);
     assert.isOk(span.context().samplingFinalized);
     assert.isNotOk(span.context().isDebug());
@@ -183,10 +183,13 @@ describe('span should', () => {
       span._tags.length,
       'The sampling.priority tag should not be set if throttled'
     );
+  });
 
+  it('not be set to debug via addTags if throttled', () => {
+    tracer._debugThrottler = new DefaultThrottler(true);
     span = new Span(tracer, 'op-name', spanContext, tracer.now());
 
-    prevTagLength = span._tags.length;
+    const prevTagLength = span._tags.length;
     const tags = {};
     tags[opentracing.Tags.SAMPLING_PRIORITY] = 1;
     span.addTags(tags);
@@ -197,6 +200,23 @@ describe('span should', () => {
       span._tags.length,
       'The sampling.priority tag should not be set if throttled'
     );
+  });
+
+  it('ignore sampling.priority tag if span is already debug', () => {
+    tracer._debugThrottler = new DefaultThrottler();
+    const isAllowedSpy = sinon.spy(tracer._debugThrottler, 'isAllowed');
+    span = new Span(tracer, 'op-name', spanContext, tracer.now());
+
+    span.setTag(opentracing.Tags.SAMPLING_PRIORITY, 1);
+    assert.isOk(span.context().samplingFinalized);
+    assert.isOk(span.context().isDebug());
+    assert.deepEqual(span._tags[span._tags.length - 1], { key: 'sampling.priority', value: 1 });
+
+    const prevTagLength = span._tags.length;
+    span.setTag(opentracing.Tags.SAMPLING_PRIORITY, 1);
+    // isAllowed should only be called the first time the sampling.priority tag is set
+    sinon.assert.calledOnce(isAllowedSpy);
+    assert.equal(prevTagLength, span._tags.length, 'The sampling.priority tag should only be set once');
   });
 
   describe('adaptive sampling tests for span', () => {
@@ -245,13 +265,15 @@ describe('span should', () => {
         assert.isOk(span.context().samplingFinalized);
         assert.deepEqual(span._tags[span._tags.length - 1], { key: 'sampling.priority', value: 1 });
 
-        let unsampledSpan = tracer.startSpan('unsampled-span');
+        const unsampledSpan = tracer.startSpan('unsampled-span');
+        const prevTagLength = span._tags.length;
         unsampledSpan.setTag(opentracing.Tags.SAMPLING_PRIORITY, -1);
         assert.isOk(unsampledSpan.context().samplingFinalized);
-        assert.deepEqual(unsampledSpan._tags[unsampledSpan._tags.length - 1], {
-          key: 'sampling.priority',
-          value: -1,
-        });
+        assert.equal(
+          prevTagLength,
+          span._tags.length,
+          'The sampling.priority tag should not be set if span is finalized and not sampled'
+        );
       });
 
       it('should trigger on a finish()-ed span', () => {
