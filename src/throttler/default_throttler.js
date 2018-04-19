@@ -30,6 +30,8 @@ export default class DefaultThrottler {
   }
 
   close(callback?: Function): void {
-    // NOP
+    if (callback) {
+      callback();
+    }
   }
 }

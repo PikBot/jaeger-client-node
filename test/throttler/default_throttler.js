@@ -29,10 +29,10 @@ describe('DefaultThrottler should', () => {
     throttler.close();
   });
 
-  it('throttle nothing', () => {
+  it('throttle nothing', done => {
     const throttler = new DefaultThrottler();
     throttler.setProcess({});
     assert.isOk(throttler.isAllowed('key'));
-    throttler.close();
+    throttler.close(done);
   });
 });

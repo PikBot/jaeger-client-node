@@ -298,6 +298,6 @@ export default class Span {
       return false;
     }
     this._spanContext.flags = this._spanContext.flags & ~constants.SAMPLED_MASK;
-    return false;
+    return true;
   }
 }
