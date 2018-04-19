@@ -29,6 +29,7 @@ import DefaultBaggageRestrictionManager from './baggage/default_baggage_restrict
 import os from 'os';
 import BaggageSetter from './baggage/baggage_setter';
 import DefaultThrottler from './throttler/default_throttler';
+import uuidv4 from 'uuid/v4';
 
 export default class Tracer {
   _serviceName: string;
@@ -100,7 +101,7 @@ export default class Tracer {
     this.registerInjector(opentracing.FORMAT_BINARY, binaryCodec);
     this.registerExtractor(opentracing.FORMAT_BINARY, binaryCodec);
 
-    const uuid = Utils.getRandom64().toString('hex');
+    const uuid = uuidv4();
     this._tags[constants.TRACER_CLIENT_ID_TAG_KEY] = uuid;
     this._process = {
       serviceName: serviceName,
